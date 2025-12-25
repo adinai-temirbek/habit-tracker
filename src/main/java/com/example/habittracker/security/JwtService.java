@@ -17,8 +17,10 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY = "c2VjcmV0a2V5c2VjcmV0a2V5c2VjcmV0a2V5c2VjcmV0MTIzNDU2Nzg5MA==";
-// This is "secretkeysecretkeysecretkeysecret1234567890" encoded in Base64  // TODO: Move to env var
+    // Use environment variable on Railway, fallback for local testing
+    private final String secretKey = System.getenv("SECRET_KEY") != null
+            ? System.getenv("SECRET_KEY")
+            : "c2VjcmV0a2V5c2VjcmV0a2V5c2VjcmV0a2V5c2VjcmV0MTIzNDU2Nzg5MA==";
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -39,7 +41,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))  // 10 hours
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -67,7 +69,10 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("JWT Secret Key is missing! Set SECRET_KEY environment variable.");
+        }
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey.trim());
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
